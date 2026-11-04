@@ -39,7 +39,8 @@ router.get(
   (req, res) => {
     // req.user is the user returned by verifyCallback
     // Issue YOUR app JWT here and return it as JSON.
-    res.json({ error: 'not implemented' }); // remove this line when you implement
+    const token = signToken({ sub: req.user.id, role: req.user.role });
+    res.json({ token });
   },
 );
 
