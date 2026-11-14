@@ -10,7 +10,7 @@ require('dotenv').config();
 
 const express = require('express');
 const db      = require('./db');
-// TODO: import { cacheGet, cacheSet, cacheDel } from './cache'
+const { cacheGet, cacheSet, cacheDel } = require('./cache');
 
 const app = express();
 app.use(express.json());
@@ -27,8 +27,16 @@ app.get('/health', (req, res) => res.json({ ok: true }));
 app.get('/feed', async (req, res) => {
   try {
     const t0 = Date.now();
+    const cachedPosts = await cacheGet(FEED_KEY);
+    if (cachedPosts !== null) {
+      console.log(`[feed] HIT ${Date.now() - t0}ms`);
+      return res.set('X-Cache', 'HIT').json(cachedPosts);
+    }
+
+    res.set('X-Cache', 'MISS');
     const posts = await db.getTrendingPosts();
-    console.log(`[feed] DB  ${Date.now() - t0}ms`);   // replace with HIT/MISS logging
+    await cacheSet(FEED_KEY, posts, FEED_TTL);
+    console.log(`[feed] MISS ${Date.now() - t0}ms`);
     res.json(posts);
   } catch (err) {
     console.error('[feed] error:', err);
@@ -41,7 +49,7 @@ app.get('/feed', async (req, res) => {
 app.post('/posts', async (req, res) => {
   try {
     const post = await db.createPost(req.body);
-    // TODO: await cacheDel(FEED_KEY);
+    await cacheDel(FEED_KEY);
     res.status(201).json(post);
   } catch (err) {
     console.error('[posts] error:', err);
