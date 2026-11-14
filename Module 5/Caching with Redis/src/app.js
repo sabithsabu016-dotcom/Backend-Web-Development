@@ -26,16 +26,17 @@ app.get('/health', (req, res) => res.json({ ok: true }));
 //   2. on miss: query db, cacheSet(FEED_KEY, posts, FEED_TTL), set X-Cache: MISS, log, return
 app.get('/feed', async (req, res) => {
   try {
+    const t0 = Date.now();
     const cachedPosts = await cacheGet(FEED_KEY);
     if (cachedPosts !== null) {
-      console.log('[feed] HIT');
+      console.log(`[feed] HIT ${Date.now() - t0}ms`);
       return res.set('X-Cache', 'HIT').json(cachedPosts);
     }
 
     res.set('X-Cache', 'MISS');
     const posts = await db.getTrendingPosts();
     await cacheSet(FEED_KEY, posts, FEED_TTL);
-    console.log('[feed] MISS');
+    console.log(`[feed] MISS ${Date.now() - t0}ms`);
     res.json(posts);
   } catch (err) {
     console.error('[feed] error:', err);
